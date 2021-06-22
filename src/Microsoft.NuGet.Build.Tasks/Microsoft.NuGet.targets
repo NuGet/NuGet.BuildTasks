@@ -79,6 +79,36 @@ Copyright (c) .NET Foundation. All rights reserved.
     <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
   </PropertyGroup>
 
+  <!--
+  C++ has different toolsets, such as v140 (VS2015), v141 (VS2017), v142 (VS2019)
+  
+  VS2017 toosets: 14.10.25017, 14.11.25503, 14.12.25827, 14.13.26128 ...
+  VS2019 toosets: 14.20.27508, 14.21.27702, 14.22.27905, 14.23.28105 ...
+  -->
+  <PropertyGroup Condition="'$(Language)' == 'C++'">
+    <!--
+    VS2017 VS2019 support VCToolsVersion, like:
+    14.16.27023 (2017)
+    14.20.27508 (2019)
+    14.24.28314 (2019)
+    -->
+    <NuGetVCToolsVersion>$(VCToolsVersion)</NuGetVCToolsVersion>
+
+    <!--
+    others using PlatformToolsetVersion
+       
+    if PlatformToolsetVersion = 140, then NuGetVCToolsVersion = 14.0
+    if PlatformToolsetVersion = 141, then NuGetVCToolsVersion = 14.10
+    
+    -->
+    <NuGetVCToolsVersion Condition="'$(NuGetVCToolsVersion)' == '' and '$(PlatformToolsetVersion)' != '' and '$([MSBuild]::Modulo($(PlatformToolsetVersion), 10))' == '0'">$([MSBuild]::Divide($(PlatformToolsetVersion),10).ToString('f1'))</NuGetVCToolsVersion>
+    <NuGetVCToolsVersion Condition="'$(NuGetVCToolsVersion)' == '' and '$(PlatformToolsetVersion)' != ''">$([MSBuild]::Divide($(PlatformToolsetVersion),10).ToString('f2'))</NuGetVCToolsVersion>
+
+
+    <NuGetTargetMoniker Condition="'$(NuGetTargetMoniker)' == ''">native,Version=v$([MSBuild]::ValueOrDefault('$(NuGetVCToolsVersion)', '0.0'))</NuGetTargetMoniker>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">native$(NuGetVCToolsVersion)</TargetFramework>
+  </PropertyGroup>
+  
   <PropertyGroup>
     <ResolveNuGetPackages Condition="'$(ResolveNuGetPackages)' == '' and '$(MSBuildProjectExtension)' != '.xproj'">true</ResolveNuGetPackages>
 
@@ -110,7 +140,7 @@ Copyright (c) .NET Foundation. All rights reserved.
 
   <!-- If RuntimeIdentifiers weren't already specified for non-UAP projects, then generate it -->
   <PropertyGroup Condition="'$(BaseNuGetRuntimeIdentifier)' == 'win' and '$(NuGetRuntimeIdentifier)' != '' and '$(RuntimeIdentifiers)' == '' and '$(RuntimeIdentifier)' == ''">
-    <RuntimeIdentifiers>win;win-x86;win-x64</RuntimeIdentifiers>
+    <RuntimeIdentifiers>win;win-x86;win-x64;win-arm;win-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
@@ -240,7 +270,7 @@ Copyright (c) .NET Foundation. All rights reserved.
 
     <!-- The items in _NuGetContentItems need to go into the appropriately-named item group, but the names depend upon the items
          themselves. Split it apart. -->
-    <CreateItem Include="@(_NuGetContentItems)" Condition="'@(_NuGetContentItems)' != ''">
+    <CreateItem Include="@(_NuGetContentItems)" AdditionalMetadata="PrecompiledHeader=NotUsing" Condition="'@(_NuGetContentItems)' != ''">
       <Output TaskParameter="Include" ItemName="%(_NuGetContentItems.NuGetItemType)" />
     </CreateItem>
   </Target>
@@ -316,7 +346,7 @@ Copyright (c) .NET Foundation. All rights reserved.
 
     <!-- The items in _NuGetContentItems need to go into the appropriately-named item group, but the names depend upon the items
          themselves. Split it apart. -->
-    <CreateItem Include="@(_NuGetContentItems)" Condition="'@(_NuGetContentItems)' != ''">
+    <CreateItem Include="@(_NuGetContentItems)" AdditionalMetadata="PrecompiledHeader=NotUsing" Condition="'@(_NuGetContentItems)' != ''">
       <Output TaskParameter="Include" ItemName="%(_NuGetContentItems.NuGetItemType)" />
     </CreateItem>
   </Target>
